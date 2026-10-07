@@ -1,0 +1,56 @@
+# schemas package
+from backend.app.schemas.auth import Token, TokenPayload, UserLogin, UserRegister
+from backend.app.schemas.user import UserOut, UserUpdate
+from backend.app.schemas.tutoring_plan import (
+    TutoringPlan,
+    Step,
+    MCQOption,
+    OptionFeedback,
+    Hint,
+    Approach,
+    Example,
+    TestCase,
+    Misconception,
+    Difficulty,
+    VerificationStatus,
+    SocraticStage,
+    ClientStepDTO,
+    ClientProblemDTO,
+    ClientPlanOverviewDTO,
+)
+from backend.app.schemas.problem import (
+    ProblemCreate,
+    ProblemPasteRequest,
+    ProblemOut,
+    ProblemDetailOut,
+    PlanVerificationResponse,
+)
+
+__all__ = [
+    "Token",
+    "TokenPayload",
+    "UserLogin",
+    "UserRegister",
+    "UserOut",
+    "UserUpdate",
+    "TutoringPlan",
+    "Step",
+    "MCQOption",
+    "OptionFeedback",
+    "Hint",
+    "Approach",
+    "Example",
+    "TestCase",
+    "Misconception",
+    "Difficulty",
+    "VerificationStatus",
+    "SocraticStage",
+    "ClientStepDTO",
+    "ClientProblemDTO",
+    "ClientPlanOverviewDTO",
+    "ProblemCreate",
+    "ProblemPasteRequest",
+    "ProblemOut",
+    "ProblemDetailOut",
+    "PlanVerificationResponse",
+]
