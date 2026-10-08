@@ -38,3 +38,8 @@ class ProblemPlan(Base):
     )
 
     problem: Mapped["Problem"] = relationship("Problem", back_populates="plans")
+
+    @property
+    def plan_dict(self) -> dict:
+        return self.raw_plan
+

@@ -1,13 +1,18 @@
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
+from pydantic import BaseModel
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.deps import get_db, require_admin
+from backend.app.db.models.learning_progress import LearningProgress
+from backend.app.db.models.problem import Problem
 from backend.app.db.models.problem_plan import ProblemPlan
+from backend.app.db.models.session import Session
 from backend.app.db.models.system_log import SystemLog
 from backend.app.db.models.user import User
 from backend.app.schemas.problem import PlanVerificationResponse
+from backend.app.schemas.user import UserOut
 from backend.app.services.plan_generator import plan_generation_service
 from backend.app.services.problem_service import get_problem_by_id
 from backend.app.services.verifier import plan_verifier
@@ -99,3 +104,74 @@ async def get_system_logs(
         }
         for log in logs
     ]
+
+
+class UserAdminUpdate(BaseModel):
+    role: Optional[str] = None
+    is_active: Optional[bool] = None
+
+
+@router.get("/users", response_model=List[UserOut])
+async def list_all_users(
+    skip: int = 0,
+    limit: int = 50,
+    db: AsyncSession = Depends(get_db),
+    admin: User = Depends(require_admin),
+):
+    """List all registered users (admin only)."""
+    stmt = select(User).offset(skip).limit(limit).order_by(User.created_at.desc())
+    result = await db.execute(stmt)
+    return list(result.scalars().all())
+
+
+@router.patch("/users/{user_id}", response_model=UserOut)
+async def update_user_status(
+    user_id: str,
+    payload: UserAdminUpdate,
+    db: AsyncSession = Depends(get_db),
+    admin: User = Depends(require_admin),
+):
+    """Update user role or active status (admin only)."""
+    stmt = select(User).where(User.id == user_id)
+    result = await db.execute(stmt)
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+
+    if payload.role is not None:
+        if payload.role not in ("student", "admin"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Role must be 'student' or 'admin'",
+            )
+        user.role = payload.role
+
+    if payload.is_active is not None:
+        user.is_active = payload.is_active
+
+    await db.commit()
+    await db.refresh(user)
+    return user
+
+
+@router.get("/metrics")
+async def get_system_metrics(
+    db: AsyncSession = Depends(get_db),
+    admin: User = Depends(require_admin),
+):
+    """Get system-wide platform metrics."""
+    user_count = await db.scalar(select(func.count(User.id)))
+    session_count = await db.scalar(select(func.count(Session.id)))
+    problem_count = await db.scalar(select(func.count(Problem.id)))
+    avg_mastery = await db.scalar(select(func.avg(LearningProgress.mastery))) or 0.0
+
+    return {
+        "total_users": user_count or 0,
+        "total_sessions": session_count or 0,
+        "total_problems": problem_count or 0,
+        "average_mastery": round(float(avg_mastery), 3),
+    }
+
